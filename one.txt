@@ -1,0 +1,202 @@
+with out database follow these steps for MicroSerive Question 
+
+Mainservices  (2 services -Customer- Order)
+
+- Spring Web
+- Eureka Discovey Client
+
+Eureka Service(1 Service -Eureka)
+
+- Eureka Server
+
+
+Gateway(1 Service -Gateway) 
+
+- Actuator
+- gateway
+- spring web
+- Eureka Discovey Client
+
+-----------------------------------------------------------------------
+
+Inside Gateway 
+
+--> enable @EnableEurekaClient inside Application.java file 
+	
+	import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+	@EnableEurekaClient
+
+
+--> Add change file type to yml and add conent to application.yml
+	server:
+	  port: 3081
+	spring:
+	  application:
+	    name: gateway
+	  cloud:
+	    gateway:
+	      routes:
+	      - id: customer
+	        uri: http://localhost:3001/
+	        predicates:
+	        - Path=/customers/**
+	      - id: order
+	        uri: http://localhost:3002/
+	        predicates:
+	        - Path=/orders/**
+	eureka:
+	  client:
+	    serviceUrl:
+	      defaultZone: http://localhost:3000/eureka
+	  registerWithEureka:
+	       - true
+	  fetchRegistry:
+	       - true
+
+-----------------------------------------------------------------------
+
+Inside Eureka
+
+--> enable @EnableEurekaServer inside Application.java file
+	import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+	@EnableEurekaServer
+
+--> Add content to application.properties
+	spring.application.name=eureka
+	server.port=3000
+	eureka.client.registerWithEureka=false
+	eureka.client.fetchRegistry=false
+	eureka.client.serviceUrl.defaultZone=http://localhost:3000/eureka/
+-----------------------------------------------------------------------
+
+
+Inside 1st Service Consider (Customer)
+--> enable @EnableEurekaClient inside Application.java file
+	import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+	@EnableEurekaServer
+
+--> Create Customer.java file add basic fields
+	package com.example.customer;
+	public class Customer {
+	    private final int id;
+	    private final String name;
+
+	    public Customer(final int id,  final String name) {
+	        this.id = id;
+	        this.name = name;
+	    }
+
+	    public int getId() {
+	        return id;
+	    }
+
+	    public String getName() {
+	        return name;
+	    }
+	}
+
+--> Create CustomerController.java and create mapping and insert random data.
+
+		package com.example.customer;
+
+		import org.springframework.web.bind.annotation.*;
+
+		import java.util.Arrays;
+		import java.util.List;
+
+		@RequestMapping("/customers")
+		@RestController
+		public class CustomerController {
+		    private List<Customer> customers = Arrays.asList(
+		            new Customer(1, "Joe Bloggs"),
+		            new Customer(2, "Jane Doe"));
+		    
+		    @GetMapping
+		    public List<Customer> getAllCustomers() {
+		        return customers;
+		    }
+		    
+		    @GetMapping("/{id}")
+		    public Customer getCustomerById(@PathVariable int id) {
+		        return customers.stream()
+		                        .filter(customer -> customer.getId() == id)
+		                        .findFirst()
+		                        .orElseThrow(IllegalArgumentException::new);
+		    } 
+		}
+
+
+
+--> Add content to application.properties
+	spring.application.name=customer
+	server.port=3001
+	eureka.client.serviceUrl.defaultZone=http://localhost:3000/eureka/
+
+-----------------------------------------------------------------------
+
+Inside 2st Service Consider (Order)
+--> enable @EnableEurekaClient inside Application.java file
+	import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+	@EnableEurekaServer
+
+--> Create Order.java file add basic fields
+	package com.example.order;
+
+	public class Order {
+	    private final int id;
+	    private final int customerId;
+	    private final String name;
+
+	    public Order(final int id, final int customerId, final String name) {
+	        this.id = id;
+	        this.customerId = customerId;
+	        this.name = name;
+	    }
+
+	    public int getId() {
+	        return id;
+	    }
+
+	    public int getCustomerId() {
+	        return customerId;
+	    }
+
+	    public String getName() {
+	        return name;
+	    }
+	}
+
+--> Create OrderController.java and create mapping and insert random data.
+
+	package com.example.order;
+	import org.springframework.web.bind.annotation.*;
+	import java.util.*;
+
+	@RequestMapping("/orders")
+	@RestController
+	public class OrderController {
+	    private final List<Order> orders = Arrays.asList(
+	            new Order(1, 1, "Product A"),
+	            new Order(2, 1, "Product B"),
+	            new Order(3, 2, "Product C"),
+	            new Order(4, 1, "Product D"),
+	            new Order(5, 2, "Product E"));
+
+	    @GetMapping
+	    public List<Order> getAllOrders() {
+	        return orders;
+	    }
+
+	    @GetMapping("/{id}")
+	    public Order getOrderById(@PathVariable int id) {
+	        return orders.stream()
+	                     .filter(order -> order.getId() == id)
+	                     .findFirst()
+	                     .orElseThrow(IllegalArgumentException::new);
+	    }
+	}
+
+--> Add content to application.properties
+	spring.application.name=order
+	server.port=3002
+	eureka.client.serviceUrl.defaultZone=http://localhost:3000/eureka/
